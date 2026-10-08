@@ -77,27 +77,45 @@ aba_geral, aba_calc, aba_prod, aba_ing = st.tabs([
 ])
 
 # --- ABA 1: VISÃO GERAL ---
+# --- ABA 1: VISÃO GERAL ---
 with aba_geral:
     df_prod = carregar_produtos()
     df_ing = carregar_ingredientes()
     
-    # As colunas empilham-se automaticamente no telemóvel
     col1, col2 = st.columns(2)
     col1.metric("Produtos Ativos no Catálogo", len(df_prod))
     col2.metric("Insumos Base Registados", len(df_ing))
     
     st.markdown("### 📋 Catálogo de Produtos")
     if not df_prod.empty:
-        st.caption("Dica: Edite os valores diretamente na tabela abaixo. Para apagar, selecione a linha e pressione 'Delete'.")
-        # use_container_width=True garante que a tabela não quebra o layout no telemóvel
-        df_editado = st.data_editor(df_prod, num_rows="dynamic", use_container_width=True, hide_index=True)
+        st.caption("Dica: Edite os valores diretamente na tabela. Para apagar, selecione a linha e pressione 'Delete'.")
+        df_editado_prod = st.data_editor(df_prod, num_rows="dynamic", use_container_width=True, hide_index=True, key="editor_prod")
         
-        if st.button("💾 Guardar Alterações da Tabela", type="primary"):
-            salvar_produtos(df_editado)
-            st.success("Tabela atualizada com sucesso no banco de dados!")
+        if st.button("💾 Guardar Alterações (Produtos)", type="primary"):
+            salvar_produtos(df_editado_prod)
+            st.success("Tabela de produtos atualizada com sucesso no banco de dados!")
     else:
         st.info("Nenhum produto cadastrado ainda.")
 
+    st.markdown("---")
+    
+    st.markdown("### 🛒 Base de Insumos")
+    if not df_ing.empty:
+        st.caption("Dica: Altere preços ou quantidades aqui. O custo unitário será recalculado automaticamente ao guardar.")
+        # Tabela interativa para os Insumos
+        df_editado_ing = st.data_editor(df_ing, num_rows="dynamic", use_container_width=True, hide_index=True, key="editor_ing")
+        
+        if st.button("💾 Guardar Alterações (Insumos)", type="primary"):
+            # Recalcula o custo unitário automaticamente caso você tenha alterado o preço ou a quantidade
+            df_editado_ing["Custo_Unitario"] = df_editado_ing.apply(
+                lambda row: row["Preço"] / row["Quantidade"] if row["Quantidade"] > 0 else 0, axis=1
+            )
+            salvar_ingredientes(df_editado_ing)
+            st.success("Tabela de insumos atualizada com sucesso no banco de dados!")
+            st.rerun() # Atualiza a tela para mostrar os novos cálculos
+    else:
+        st.info("Nenhum insumo cadastrado ainda.")
+        
 # --- ABA 2: CALCULADORA (FICHA TÉCNICA) ---
 with aba_calc:
     if "receita" not in st.session_state:
